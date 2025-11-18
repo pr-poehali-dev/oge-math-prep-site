@@ -1,8 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import Icon from "@/components/ui/icon";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Topic {
   id: number;
@@ -11,66 +15,69 @@ interface Topic {
   icon: string;
   progress: number;
   tasks: number;
+  completed: number;
   difficulty: "easy" | "medium" | "hard";
 }
 
+const BACKEND_URL = "https://functions.poehali.dev/a17bcb9e-7062-4681-a9c2-64d97d56877f";
+
 const Index = () => {
-  const [topics] = useState<Topic[]>([
-    {
-      id: 1,
-      title: "Числа и вычисления",
-      description: "Натуральные числа, дроби, проценты, степени",
-      icon: "Calculator",
-      progress: 0,
-      tasks: 12,
-      difficulty: "easy"
-    },
-    {
-      id: 2,
-      title: "Алгебраические выражения",
-      description: "Преобразование выражений, формулы сокращенного умножения",
-      icon: "FunctionSquare",
-      progress: 0,
-      tasks: 15,
-      difficulty: "medium"
-    },
-    {
-      id: 3,
-      title: "Уравнения и неравенства",
-      description: "Линейные, квадратные уравнения, системы уравнений",
-      icon: "Equal",
-      progress: 0,
-      tasks: 18,
-      difficulty: "medium"
-    },
-    {
-      id: 4,
-      title: "Функции и графики",
-      description: "Линейная, квадратичная, обратная пропорциональность",
-      icon: "TrendingUp",
-      progress: 0,
-      tasks: 10,
-      difficulty: "hard"
-    },
-    {
-      id: 5,
-      title: "Геометрия: планиметрия",
-      description: "Треугольники, четырехугольники, окружности",
-      icon: "Triangle",
-      progress: 0,
-      tasks: 20,
-      difficulty: "hard"
-    },
-    {
-      id: 6,
-      title: "Статистика и вероятность",
-      description: "Анализ данных, комбинаторика, теория вероятностей",
-      icon: "BarChart3",
-      progress: 0,
-      tasks: 8,
-      difficulty: "easy"
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [completedTasks, setCompletedTasks] = useState(0);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchTopics();
+  }, []);
+
+  const fetchTopics = async () => {
+    try {
+      const response = await fetch(BACKEND_URL);
+      const data = await response.json();
+      setTopics(data.topics);
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить темы",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const updateProgress = async (topicId: number, completed: number) => {
+    try {
+      const response = await fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          student_id: 1,
+          topic_id: topicId,
+          completed_tasks: completed
+        })
+      });
+
+      if (response.ok) {
+        await fetchTopics();
+        toast({
+          title: "Прогресс обновлен",
+          description: "Ваш прогресс успешно сохранен"
+        });
+        setSelectedTopic(null);
+      }
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить прогресс",
+        variant: "destructive"
+      });
+    }
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch(difficulty) {
@@ -90,9 +97,37 @@ const Index = () => {
     }
   };
 
+  const calculateOverallProgress = () => {
+    if (topics.length === 0) return 0;
+    const totalProgress = topics.reduce((sum, topic) => sum + topic.progress, 0);
+    return Math.round(totalProgress / topics.length);
+  };
+
+  const handleTopicClick = (topic: Topic) => {
+    setSelectedTopic(topic);
+    setCompletedTasks(topic.completed);
+  };
+
+  const handleSaveProgress = () => {
+    if (selectedTopic) {
+      updateProgress(selectedTopic.id, completedTasks);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Icon name="Loader2" className="animate-spin text-primary mx-auto mb-4" size={48} />
+          <p className="text-muted-foreground">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-white sticky top-0 z-10">
+      <header className="border-b bg-white sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -107,7 +142,7 @@ const Index = () => {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Общий прогресс</p>
-                <p className="text-xl font-semibold text-primary">0%</p>
+                <p className="text-2xl font-bold text-primary">{calculateOverallProgress()}%</p>
               </div>
             </div>
           </div>
@@ -117,7 +152,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Разделы теории</h2>
-          <p className="text-muted-foreground">Изучай материалы последовательно для эффективной подготовки</p>
+          <p className="text-muted-foreground">Отмечайте выполненные задания, чтобы отслеживать свой прогресс</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -125,6 +160,7 @@ const Index = () => {
             <Card 
               key={topic.id} 
               className="hover:shadow-lg transition-all duration-300 cursor-pointer group hover:-translate-y-1"
+              onClick={() => handleTopicClick(topic)}
             >
               <CardHeader>
                 <div className="flex items-start justify-between mb-2">
@@ -147,9 +183,12 @@ const Index = () => {
                     <span className="font-semibold">{topic.progress}%</span>
                   </div>
                   <Progress value={topic.progress} className="h-2" />
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Icon name="FileText" size={16} />
-                    <span>{topic.tasks} заданий</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Icon name="FileText" size={16} />
+                      <span>{topic.tasks} заданий</span>
+                    </div>
+                    <span className="text-primary font-medium">{topic.completed} / {topic.tasks}</span>
                   </div>
                 </div>
               </CardContent>
@@ -182,6 +221,36 @@ const Index = () => {
           </div>
         </div>
       </main>
+
+      <Dialog open={!!selectedTopic} onOpenChange={() => setSelectedTopic(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedTopic?.title}</DialogTitle>
+            <DialogDescription>
+              Отметьте количество выполненных заданий из {selectedTopic?.tasks}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Выполнено заданий</label>
+              <Input 
+                type="number" 
+                min="0" 
+                max={selectedTopic?.tasks || 0}
+                value={completedTasks}
+                onChange={(e) => setCompletedTasks(Math.min(Number(e.target.value), selectedTopic?.tasks || 0))}
+              />
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Icon name="Info" size={16} />
+              <span>Прогресс: {selectedTopic ? Math.round((completedTasks / selectedTopic.tasks) * 100) : 0}%</span>
+            </div>
+            <Button onClick={handleSaveProgress} className="w-full">
+              Сохранить прогресс
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

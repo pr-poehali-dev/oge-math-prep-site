@@ -1,0 +1,21 @@
+{
+  "tests": [
+    {
+      "name": "Get all topics with progress",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Update progress for a topic",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "student_id": 1,
+        "topic_id": 1,
+        "completed_tasks": 5
+      },
+      "expectedStatus": 200
+    }
+  ]
+}
