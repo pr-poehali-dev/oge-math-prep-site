@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import Icon from "@/components/ui/icon";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
 interface Topic {
@@ -26,6 +27,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [completedTasks, setCompletedTasks] = useState(0);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -104,6 +106,11 @@ const Index = () => {
   };
 
   const handleTopicClick = (topic: Topic) => {
+    navigate(`/topic/${topic.id}`);
+  };
+
+  const handleProgressClick = (e: React.MouseEvent, topic: Topic) => {
+    e.stopPropagation();
     setSelectedTopic(topic);
     setCompletedTasks(topic.completed);
   };
@@ -188,7 +195,14 @@ const Index = () => {
                       <Icon name="FileText" size={16} />
                       <span>{topic.tasks} заданий</span>
                     </div>
-                    <span className="text-primary font-medium">{topic.completed} / {topic.tasks}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-auto p-0 text-primary font-medium hover:underline"
+                      onClick={(e) => handleProgressClick(e, topic)}
+                    >
+                      {topic.completed} / {topic.tasks}
+                    </Button>
                   </div>
                 </div>
               </CardContent>
